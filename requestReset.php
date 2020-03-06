@@ -8,10 +8,23 @@ use PHPMailer\PHPMailer\Exception;
 require 'PHPMailer/src/Exception.php';
 require 'PHPMailer/src/PHPMailer.php';
 require 'PHPMailer/src/SMTP.php';
+require 'config.php';
 
 if (isset($_POST['email'])) {
 
     $emailTo = $_POST['email'];
+
+    $code = uniqid(true);
+
+    $sql = "INSERT INTO resetPassword(code, email) VALUES (:code, :email)";
+    $query = $con->prepare($sql);
+    $query->bindParam(":code", $code);
+    $query->bindParam(":email", $emailTo);
+    $query->execute();
+
+    if (!$query) {
+        exit("Error");
+    }
 
     // Instantiation and passing `true` enables exceptions
     $mail = new PHPMailer(true);
@@ -32,16 +45,19 @@ if (isset($_POST['email'])) {
         $mail->addReplyTo('no-reply@gmail.com', 'No reply');
 
         // Content
+        $url = "http://" . $_SERVER["HTTP_POST"] . dirname($_SERVER["PHP_SELF"]) . "/resetPassword.php?code=$code";
         $mail->isHTML(true);                                  // Set email format to HTML
-        $mail->Subject = 'Here is the subject';
-        $mail->Body    = 'This is the HTML message body <b>in bold!</b>';
+        $mail->Subject = 'Your password reset link';
+        $mail->Body    = "<h1>You requested a password reset</h1>
+                            Click <a href='$url'>this link</a> to do so";
         $mail->AltBody = 'This is the body in plain text for non-HTML mail clients';
 
         $mail->send();
-        echo 'Message has been sent';
+        echo 'Reset password link has been sent to your email';
     } catch (Exception $e) {
         echo "Message could not be sent. Mailer Error: {$mail->ErrorInfo}";
     }
+    exit();
 }
 
 
